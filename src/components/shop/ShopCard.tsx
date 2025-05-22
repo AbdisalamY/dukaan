@@ -1,31 +1,7 @@
 // src/components/shop/ShopCard.tsx
 'use client';
 
-import Image from 'next/image';
-import { Edit, AlertCircle, CheckCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { 
-  Card, 
-  CardContent, 
-  CardFooter
-} from '@/components/ui/card';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-
-interface ShopCardProps {
-  shop: {
-    id: number;
-    logo: string;
-    name: string;
-    industry: string;
-    shopNumber: string;
-    city: string;
-    mall: string;
-    whatsappNumber: string;
-    status: 'pending' | 'approved' | 'rejected';
-  };
-  onEdit: () => void;
-}
+// ... imports
 
 export function ShopCard({ shop, onEdit }: ShopCardProps) {
   return (
@@ -33,16 +9,23 @@ export function ShopCard({ shop, onEdit }: ShopCardProps) {
       <CardContent className="pt-6">
         <div className="flex flex-col sm:flex-row gap-6">
           <div className="w-40 h-40 relative border rounded">
-            <Image 
-              src={shop.logo} 
-              alt={shop.name}
-              fill
-              sizes="160px"
-              style={{ objectFit: "cover" }}
-              className="rounded"
-            />
+            {shop.logo ? (
+              <Image 
+                src={shop.logo} 
+                alt={shop.name}
+                fill
+                sizes="160px"
+                style={{ objectFit: "cover" }}
+                className="rounded"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                <Store className="h-12 w-12 text-gray-400" />
+              </div>
+            )}
           </div>
           
+          {/* Shop status display */}
           <div className="flex-1 space-y-6">
             <div>
               <h2 className="text-2xl font-bold">{shop.name}</h2>
@@ -61,6 +44,7 @@ export function ShopCard({ shop, onEdit }: ShopCardProps) {
               )}
             </div>
             
+            {/* Show warning message for pending shops */}
             {shop.status === 'pending' && (
               <Alert variant="default" className="bg-yellow-50 text-yellow-800 border-yellow-200">
                 <AlertCircle className="h-4 w-4" />
@@ -71,33 +55,11 @@ export function ShopCard({ shop, onEdit }: ShopCardProps) {
               </Alert>
             )}
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Industry</p>
-                <p className="text-base">{shop.industry}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Shop Number</p>
-                <p className="text-base">{shop.shopNumber}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Location</p>
-                <p className="text-base">{shop.mall}, {shop.city}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">WhatsApp Business</p>
-                <p className="text-base">{shop.whatsappNumber}</p>
-              </div>
-            </div>
+            {/* ... rest of the component */}
           </div>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-end border-t pt-4">
-        <Button variant="outline" onClick={onEdit}>
-          <Edit className="h-4 w-4 mr-2" />
-          Edit Information
-        </Button>
-      </CardFooter>
+      {/* ... card footer */}
     </Card>
   );
 }
