@@ -3,6 +3,7 @@ import HeroSection from "@/components/home/HeroSection";
 import CategoryNav from "@/components/home/CategoryNav";
 import ShopsGrid from "@/components/home/ShopsGrid";
 import Footer from "@/components/common/Footer";
+//new
 
 const categories = [
   "Fashion", "Electronics", "Groceries", "Toys", "Books", "Beauty"
