@@ -22,7 +22,8 @@ export function SignUpForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form action="">
+        {/* ✅ Fix: Add the signup action to the form */}
+        <form action={signup}>
           <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
@@ -30,7 +31,6 @@ export function SignUpForm() {
                 <Input
                   name="first-name"
                   id="first-name"
-                  placeholder="Max"
                   required
                 />
               </div>
@@ -39,7 +39,6 @@ export function SignUpForm() {
                 <Input
                   name="last-name"
                   id="last-name"
-                  placeholder="Robinson"
                   required
                 />
               </div>
@@ -50,22 +49,30 @@ export function SignUpForm() {
                 name="email"
                 id="email"
                 type="email"
-                placeholder="m@example.com"
+                placeholder="email"
                 required
               />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="password">Password</Label>
-              <Input name="password" id="password" type="password" />
+              <Input 
+                name="password" 
+                id="password" 
+                type="password" 
+                placeholder="password"
+                minLength={6}
+                required
+              />
             </div>
-            <Button formAction={signup} type="submit" className="w-full">
+            {/* ✅ Remove formAction since we're using action on form */}
+            <Button type="submit" className="w-full">
               Create an account
             </Button>
           </div>
         </form>
         <div className="mt-4 text-center text-sm">
           Already have an account?{" "}
-          <Link href="/login" className="underline">
+          <Link href="/sign-in" className="underline">
             Sign in
           </Link>
         </div>

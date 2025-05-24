@@ -1,6 +1,7 @@
 'use client';
 import React, { ReactNode } from "react";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -8,9 +9,8 @@ interface AuthLayoutProps {
 }
 
 export default function AuthLayout({ children, backgroundHeight = "full" }: AuthLayoutProps) {
-  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
-  // Fallback for SSR/SSG: usePathname hook (client only)
-  // If not available, fallback to empty string
+  const pathname = usePathname(); // ✅ Use Next.js hook instead
+  
   // Show overlay/text only for sign-in and sign-up
   const isSignInOrSignUp = pathname === "/sign-in" || pathname === "/sign-up";
 

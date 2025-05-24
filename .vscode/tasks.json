@@ -1,0 +1,115 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Supabase: Apply Migration",
+            "type": "shell",
+            "command": "node",
+            "args": ["scripts/supabase-manager.js", "migrate"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Supabase: Check Status",
+            "type": "shell",
+            "command": "node",
+            "args": ["scripts/supabase-manager.js", "status"],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Supabase: List Tables",
+            "type": "shell",
+            "command": "node",
+            "args": ["scripts/supabase-manager.js", "tables"],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Supabase: Add Sample Data",
+            "type": "shell",
+            "command": "node",
+            "args": ["scripts/supabase-manager.js", "sample-data"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Supabase: Create Admin User",
+            "type": "shell",
+            "command": "node",
+            "args": ["scripts/supabase-manager.js", "create-admin", "${input:adminEmail}", "${input:adminPassword}", "${input:adminName}"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Supabase: Execute Custom SQL",
+            "type": "shell",
+            "command": "node",
+            "args": ["scripts/supabase-manager.js", "sql", "${input:customSQL}"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new"
+            },
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "adminEmail",
+            "description": "Admin email address",
+            "default": "admin@example.com",
+            "type": "promptString"
+        },
+        {
+            "id": "adminPassword",
+            "description": "Admin password",
+            "default": "password123",
+            "type": "promptString"
+        },
+        {
+            "id": "adminName",
+            "description": "Admin full name",
+            "default": "Admin User",
+            "type": "promptString"
+        },
+        {
+            "id": "customSQL",
+            "description": "SQL query to execute",
+            "default": "SELECT * FROM shops LIMIT 5;",
+            "type": "promptString"
+        }
+    ]
+}

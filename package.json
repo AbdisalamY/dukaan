@@ -2,13 +2,21 @@
   "name": "dukaan",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:migrate": "node scripts/supabase-manager.js migrate",
+    "db:status": "node scripts/supabase-manager.js status",
+    "db:tables": "node scripts/supabase-manager.js tables",
+    "db:sample": "node scripts/supabase-manager.js sample-data",
+    "db:admin": "node scripts/supabase-manager.js create-admin",
+    "db:sql": "node scripts/supabase-manager.js sql"
   },
   "dependencies": {
+    "dotenv": "^16.4.5",
     "@hookform/resolvers": "^5.0.1",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-checkbox": "^1.3.2",

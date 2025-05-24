@@ -11,7 +11,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { login } from "@/lib/auth-actions"
-import SignInWithGoogleButton from "./SignInWithGoogleButton"
+import SignInWithGoogleButton from "./SigninWithGoogleButton"
 
 export function LoginForm() {
   return (
@@ -52,7 +52,7 @@ export function LoginForm() {
         </form>
         <div className="mt-4 text-center text-sm">
           Don&apos;t have an account?{" "}
-          <Link href="/signup" className="underline">
+          <Link href="/sign-up" className="underline">
             Sign up
           </Link>
         </div>
