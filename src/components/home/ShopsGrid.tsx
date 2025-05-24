@@ -4,7 +4,7 @@ import { FaWhatsapp } from "react-icons/fa";
 
 // Define the Shop type
 interface Shop {
-  id: number;
+  id: string;
   name: string;
   location: string;
   mall: string;

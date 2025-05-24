@@ -3,56 +3,55 @@ import HeroSection from "@/components/home/HeroSection";
 import CategoryNav from "@/components/home/CategoryNav";
 import ShopsGrid from "@/components/home/ShopsGrid";
 import Footer from "@/components/common/Footer";
-//new
+import { supabase } from "@/lib/supabase";
 
-const categories = [
-  "Fashion", "Electronics", "Groceries", "Toys", "Books", "Beauty"
-];
+// Fetch data from Supabase (server-side)
+async function getHomeData() {
+  // Fetch shops WITHOUT any joins to avoid recursion
+  const { data: shopsData, error: shopsError } = await supabase
+    .from("shops")
+    .select(`
+      id,
+      name,
+      logo,
+      shop_number,
+      whatsapp_number,
+      status
+    `)
+    .eq("status", "approved")
+    .limit(12);
 
-const shops = [
-  {
-    id: 1,
-    name: "YVES ROCHER",
-    location: "Nairobi",
-    mall: "BBS",
-    shopNumber: "112",
-    phone: "+254 799 374937",
-    logo: "https://via.placeholder.com/150",
-    category: "Beauty",
-  },
-  {
-    id: 2,
-    name: "Shoe Haven",
-    location: "Nairobi",
-    mall: "Westgate Mall",
-    shopNumber: "334",
-    phone: "254 799 374937",
-    logo: "https://via.placeholder.com/150",
-    category: "Shoes",
-  },
-  {
-    id: 3,
-    name: "Apparel Hub",
-    location: "Nairobi",
-    mall: "The Hub Karen",
-    shopNumber: "78A",
-    phone: "+254 701 234567",
-    logo: "https://via.placeholder.com/150",
-    category: "Apparel",
-  },
-  {
-    id: 4,
-    name: "Perfume Palace",
-    location: "Nairobi",
-    mall: "Village Market",
-    shopNumber: "19C",
-    phone: "+254 799 876543",
-    logo: "https://via.placeholder.com/150",
-    category: "Perfumes",
-  }
-];
+  // Fetch all industries (categories)
+  const { data: industriesData, error: industriesError } = await supabase
+    .from("industries")
+    .select("name");
 
-export default function Home() {
+  // Handle errors (optional: you can use your handleSupabaseError helper)
+  if (shopsError) throw new Error(shopsError.message);
+  if (industriesError) throw new Error(industriesError.message);
+
+  // Adapt data for ShopsGrid
+  const shops = (shopsData || []).map((shop: any) => ({
+    id: shop.id,
+    name: shop.name,
+    location: "", // No city join
+    mall: "",     // No mall join
+    shopNumber: shop.shop_number,
+    phone: shop.whatsapp_number,
+    logo: shop.logo || "https://via.placeholder.com/150",
+    category: "", // No industry join
+    status: shop.status,
+  }));
+
+  // Adapt data for CategoryNav
+  const categories = (industriesData || []).map((ind: any) => ind.name);
+
+  return { shops, categories };
+}
+
+export default async function Home() {
+  const { shops, categories } = await getHomeData();
+
   return (
     <main className="flex flex-col min-h-screen bg-gray-50">
       <Header />
