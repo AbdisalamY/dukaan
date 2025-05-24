@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import SignUpForm from "@/components/auth/SignUpForm";
-import SignUpInitial from "@/components/auth/SignUpInitial";
+import { SignUpForm } from "@/components/auth/SignUpForm";
 
 export default function SignUpPage() {
   const [showFullForm, setShowFullForm] = useState(false);
@@ -16,12 +15,6 @@ export default function SignUpPage() {
   };
 
   return (
-    <>
-      {showFullForm ? (
-        <SignUpForm onBack={handleBack} />
-      ) : (
-        <SignUpInitial onContinue={handleContinue} />
-      )}
-    </>
+    <div className="flex h-svh items-center"><SignUpForm/></div>
   );
 }

@@ -1,9 +1,11 @@
 "use client";
 import { usePathname } from "next/navigation";
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
+import LoginLogoutButton from '@/components/auth/LoginLogoutButton';
+import { createClient } from '@/utils/supabase/client';
 
 const Header: React.FC = () => {
   const pathname = usePathname();
@@ -12,6 +14,12 @@ const Header: React.FC = () => {
     pathname === "/sign-up" ||
     pathname === "/forgot-password" ||
     pathname.startsWith("/admin");
+
+  const [user, setUser] = useState<any>(null);
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+  }, []);
 
   if (isAuthPage) return null;
 
@@ -39,12 +47,12 @@ const Header: React.FC = () => {
         </form>
         {/* Right Side */}
         <div className="flex items-center space-x-4">
-          <Link href="/sign-up" className="text-gray-700 hover:text-indigo-600 text-sm font-medium">
-            Become a Partner
-          </Link>
-          <Button asChild className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6 py-2 font-semibold text-sm shadow">
-            <Link href="/sign-in">Log in</Link>
-          </Button>
+          {!user && (
+            <Link href="/sign-up" className="text-gray-700 hover:text-indigo-600 text-sm font-medium">
+              Become a Partner
+            </Link>
+          )}
+          <LoginLogoutButton />
         </div>
       </div>
     </header>
