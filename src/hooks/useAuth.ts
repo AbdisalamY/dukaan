@@ -48,6 +48,26 @@ export function useAuth(): AuthState {
 
   const initializeAuth = useCallback(async () => {
     try {
+      // First check if there's a session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Error getting session:', sessionError);
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+
+      if (!session) {
+        // No session, user is not logged in
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+
+      // If we have a session, get the user
       const { data: { user: authUser }, error } = await supabase.auth.getUser();
       
       if (error) {
