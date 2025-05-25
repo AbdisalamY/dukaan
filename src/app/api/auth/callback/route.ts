@@ -9,11 +9,22 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
     
-    if (!error) {
-      // ✅ Redirect to shop dashboard after confirmation
-      return NextResponse.redirect(`${origin}/shop/dashboard`)
+    if (!error && data.user) {
+      // Check user's role to determine redirect destination
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .single();
+
+      // Redirect based on user role
+      if (profile?.role === 'admin') {
+        return NextResponse.redirect(`${origin}/admin/dashboard`)
+      } else {
+        return NextResponse.redirect(`${origin}/shop/dashboard`)
+      }
     }
   }
 

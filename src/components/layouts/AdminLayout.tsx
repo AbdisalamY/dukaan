@@ -86,10 +86,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {/* Desktop Sidebar */}
         <div className="hidden md:flex md:w-64 md:flex-col">
           <div className="flex flex-col flex-grow bg-white border-r border-gray-200 overflow-y-auto min-h-[calc(100vh-5rem)]">
-            <div className="p-4 border-b border-gray-200">
-              <p className="text-sm font-medium text-gray-700">Admin Panel</p>
-            </div>
-            
             {/* Navigation */}
             <div className="flex-1 flex flex-col p-4 space-y-1">
               {navigationItems.map((item) => {
@@ -114,29 +110,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               })}
             </div>
             
-            {/* User Profile */}
-            <div className="p-4 border-t border-gray-200">
-              <div className="flex items-center space-x-3 mb-3">
-                <Avatar>
-                  <AvatarImage src={userInfo.avatar} />
-                  <AvatarFallback className="bg-indigo-100 text-indigo-600 font-semibold">
-                    {userInfo.name.split(' ').map(n => n[0]).join('')}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
-                    {userInfo.name}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate">
-                    {userInfo.role}
-                  </p>
-                </div>
-              </div>
-              <Button variant="outline" size="sm" className="w-full text-indigo-600 border-indigo-200 hover:bg-indigo-50" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
-            </div>
           </div>
         </div>
         

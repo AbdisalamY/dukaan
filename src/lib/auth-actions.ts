@@ -39,8 +39,21 @@ export async function login(formData: FormData) {
 
   // Check if user exists and redirect appropriately
   if (data.user) {
+    // Check user's role to determine redirect destination
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', data.user.id)
+      .single();
+
     revalidatePath("/", "layout");
-    redirect("/shop/dashboard");
+    
+    // Redirect based on user role
+    if (profile?.role === 'admin') {
+      redirect("/admin/dashboard");
+    } else {
+      redirect("/shop/dashboard");
+    }
   }
 }
 
