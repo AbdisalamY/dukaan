@@ -51,16 +51,6 @@ const navigationItems: NavigationItem[] = [
     name: 'Analytics',
     href: '/admin/analytics',
     icon: BarChart2
-  },
-  {
-    name: 'Users',
-    href: '/admin/users',
-    icon: Users
-  },
-  {
-    name: 'Settings',
-    href: '/admin/settings',
-    icon: Settings
   }
 ];
 
@@ -90,13 +80,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       {/* Desktop Sidebar */}
       <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
         <div className="flex flex-col flex-grow bg-white border-r border-gray-200 overflow-y-auto">
-          <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200">
-            <span className="text-3xl font-bold text-indigo-600" style={{ fontFamily: 'cursive' }}>
-              Admin
-            </span>
-            <Badge variant="outline" className="text-indigo-600 border-indigo-200">
-              Sokoo
-            </Badge>
+          <div className="p-4 border-b border-gray-200">
+            <h1 className="text-3xl font-bold text-indigo-600" style={{ fontFamily: 'cursive' }}>Teke Teke</h1>
+            <p className="text-xs text-gray-500 mt-1">Admin Panel</p>
           </div>
           
           {/* Navigation */}
@@ -160,13 +146,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-[80%] sm:w-64">
               <div className="flex flex-col h-full">
-                <div className="h-16 flex items-center justify-between px-6 border-b">
-                  <span className="text-xl font-semibold text-blue-600">
-                    Admin
-                  </span>
-                  <Badge variant="outline" className="text-blue-600">
-                    Sokoo
-                  </Badge>
+                <div className="p-4 border-b border-gray-200">
+                  <h1 className="text-xl font-bold text-indigo-600" style={{ fontFamily: 'cursive' }}>Teke Teke</h1>
+                  <p className="text-xs text-gray-500 mt-1">Admin Panel</p>
                 </div>
                 <div className="flex-1 flex flex-col p-4 space-y-1">
                   {navigationItems.map((item) => {
@@ -221,11 +203,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               </div>
             </SheetContent>
           </Sheet>
-          <span className="text-xl font-semibold text-blue-600">Admin</span>
+          <span className="text-xl font-semibold text-indigo-600">Teke Teke</span>
         </div>
-        <Badge variant="outline" className="text-blue-600">
-          Sokoo
-        </Badge>
       </div>
       
       {/* Main Content */}

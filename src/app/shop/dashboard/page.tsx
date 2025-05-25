@@ -1,130 +1,61 @@
-// File path: src/app/shop/dashboard/page.tsx
-// Replace the entire file with this code
+'use client'
 
-'use client';
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import ShopForm from '@/components/shop/ShopForm'
+import { toast } from 'sonner'
 
-import { useState, useEffect } from 'react';
-import { StoreIcon } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ShopForm, ShopFormData } from '@/components/shop/ShopForm';
-import { ShopCard } from '@/components/shop/ShopCard';
-
-// Types
-interface ShopData {
-  id: number;
-  logo: string;
-  name: string;
-  industry: string;
-  shopNumber: string;
-  city: string;
-  mall: string;
-  whatsappNumber: string;
-  status: 'pending' | 'approved' | 'rejected';
+interface ShopFormData {
+  name: string
+  logo: string
+  industry: string
+  shop_number: string
+  city: string
+  mall: string
+  whatsapp_number: string
 }
 
-export default function DashboardPage() {
-  // State
-  const [shopData, setShopData] = useState<ShopData | null>(null);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export default function ShopDashboard() {
+  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
 
-  // Simulating loading shop data from API
-  useEffect(() => {
-    // For demo purposes, you can uncomment different scenarios
-    
-    // First-time user, no shop registered
-    setShopData(null);
-    
-    // Shop registered but pending approval
-    // setShopData({
-    //   id: 1,
-    //   logo: '/logos/sample-logo.png',
-    //   name: 'Fashion Hub',
-    //   industry: 'Apparel',
-    //   shopNumber: '123',
-    //   city: 'Nairobi',
-    //   mall: 'The Hub',
-    //   whatsappNumber: '+254 799374937',
-    //   status: 'pending'
-    // });
+  const handleShopSubmit = async (data: ShopFormData) => {
+    setIsLoading(true)
+    try {
+      const response = await fetch('/api/shops', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      })
 
-    // Shop approved
-    // setShopData({
-    //   id: 1,
-    //   logo: '/logos/sample-logo.png',
-    //   name: 'Fashion Hub',
-    //   industry: 'Apparel',
-    //   shopNumber: '123',
-    //   city: 'Nairobi',
-    //   mall: 'The Hub',
-    //   whatsappNumber: '+254 799374937',
-    //   status: 'approved'
-    // });
-  }, []);
-
-  // Handle form submission
-  const handleSubmit = (formData: ShopFormData) => {
-    setIsSubmitting(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      // If editing existing shop
-      if (shopData) {
-        setShopData({
-          ...shopData,
-          ...formData,
-        });
-      } 
-      // If creating new shop
-      else {
-        setShopData({
-          id: 1,
-          ...formData,
-          status: 'pending'
-        });
+      if (response.ok) {
+        const shop = await response.json()
+        toast.success('Shop registered successfully! Awaiting admin approval.')
+        router.push('/shop/payments')
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to register shop')
       }
-      
-      setIsSubmitting(false);
-      setIsFormOpen(false);
-    }, 1500);
-  };
+    } catch (error) {
+      console.error('Error registering shop:', error)
+      toast.error('Failed to register shop')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Shop Dashboard</h1>
+    <div className="container mx-auto py-8">
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-bold">Shop Dashboard</h1>
+        <p className="text-muted-foreground mt-2">
+          Register your shop to start accepting payments and managing your business
+        </p>
       </div>
-
-      {!shopData ? (
-        // No shop registered yet
-        <Card className="border-dashed border-2 hover:border-blue-400 transition-colors">
-          <CardContent className="pt-6 flex flex-col items-center justify-center min-h-[300px]">
-            <StoreIcon className="h-16 w-16 text-gray-300 mb-4" />
-            <h3 className="text-xl font-medium mb-2">No Shop Registered</h3>
-            <p className="text-gray-500 text-center mb-6 max-w-md">
-              Register your shop to start selling on TekeTeke. Add your shop information to get started.
-            </p>
-            <Button onClick={() => setIsFormOpen(true)}>Register Shop</Button>
-          </CardContent>
-        </Card>
-      ) : (
-        // Shop already registered (pending or approved)
-        <ShopCard 
-          shop={shopData} 
-          onEdit={() => setIsFormOpen(true)} 
-        />
-      )}
-
-      {/* Shop Form Dialog */}
-      <ShopForm
-        isOpen={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
-        onSubmit={handleSubmit}
-        initialData={shopData || {}}
-        isLoading={isSubmitting}
-        isEditing={!!shopData}
-      />
+      
+      <ShopForm onSubmit={handleShopSubmit} isLoading={isLoading} />
     </div>
-  );
+  )
 }

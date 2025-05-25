@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent } from '@/components/ui/card';
 import { PaymentCard } from '@/components/shop/PaymentCard';
-import { PaymentDialog } from '@/components/shop/PaymentDialog';
+import { MpesaPaymentDialog } from '@/components/shop/MpesaPaymentDialog';
 import { PaymentHistoryTable } from '@/components/shop/PaymentHistoryTable';
 import { Payment, ShopWithPayment } from '@/types/payment';
 import { generateTransactionId } from '@/lib/utils';
@@ -110,7 +110,7 @@ export default function PaymentsPage() {
         status: 'paid',
         paymentDate,
         transactionId: generateTransactionId(),
-        paymentMethod: 'Credit Card'
+        paymentMethod: 'M-Pesa'
       };
       
       // Add to payment history
@@ -183,13 +183,13 @@ export default function PaymentsPage() {
 
       {/* Payment Dialog */}
       {shop && currentPayment && (
-        <PaymentDialog
+        <MpesaPaymentDialog
           isOpen={paymentDialogOpen}
           onClose={() => setPaymentDialogOpen(false)}
           onPayment={handleSuccessfulPayment}
           shopName={shop.name}
           amount={`${currentPayment.currency} ${currentPayment.amount.toLocaleString()}`}
-          phoneNumber={shop.phone}
+          defaultPhoneNumber={shop.phone}
         />
       )}
       
@@ -234,7 +234,7 @@ export default function PaymentsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm font-medium text-gray-600">Payment Method:</span>
-                    <span>Credit Card</span>
+                    <span>M-Pesa</span>
                   </div>
                 </div>
               </div>

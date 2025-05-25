@@ -1,283 +1,304 @@
-// src/components/shop/ShopForm.tsx
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
-import { Upload } from 'lucide-react';
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue 
-} from '@/components/ui/select';
+import { useState, useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { toast } from 'sonner'
+
+interface Category {
+  id: string
+  name: string
+  description: string
+}
+
+interface ShopFormData {
+  name: string
+  logo: string
+  industry: string
+  shop_number: string
+  city: string
+  mall: string
+  whatsapp_number: string
+}
 
 interface ShopFormProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (data: ShopFormData) => void;
-  initialData?: Partial<ShopFormData>;
-  isLoading?: boolean;
-  isEditing?: boolean;
+  onSubmit: (data: ShopFormData) => Promise<void>
+  isLoading?: boolean
 }
 
-export interface ShopFormData {
-  logo: string;
-  name: string;
-  industry: string;
-  shopNumber: string;
-  city: string;
-  mall: string;
-  whatsappNumber: string;
-}
-
-// Industries from database categories
-const industries = [
-  'Fashion', 
-  'Electronics', 
-  'Groceries', 
-  'Toys', 
-  'Books', 
-  'Beauty',
-  'Apparel',
-  'Shoes',
-  'Home & Kitchen',
-  'Jewelry',
-  'Sport & Fitness',
-  'Health & Beauty',
-  'Food & Beverage',
-  'Home & Garden'
-];
-
-// Cities data - these could be fetched from database in the future
-const cities = ['Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Eldoret'];
-
-// Mock malls by city
-const mallsByCity: Record<string, string[]> = {
-  'Nairobi': ['The Hub', 'Two Rivers Mall', 'Garden City Mall', 'Westgate Shopping Mall', 'Village Market'],
-  'Mombasa': ['Nyali Centre', 'City Mall', 'Mombasa Mall'],
-  'Kisumu': ['West End Mall', 'Mega City Mall', 'United Mall'],
-  'Nakuru': ['Westside Mall', 'Nakuru Mall'],
-  'Eldoret': ['Rupa Mall', 'Zion Mall']
-};
-
-export function ShopForm({ 
-  isOpen, 
-  onClose, 
-  onSubmit, 
-  initialData = {}, 
-  isLoading = false,
-  isEditing = false
-}: ShopFormProps) {
-  const [formData, setFormData] = useState<Partial<ShopFormData>>({
-    logo: '',
+export default function ShopForm({ onSubmit, isLoading = false }: ShopFormProps) {
+  const [formData, setFormData] = useState<ShopFormData>({
     name: '',
+    logo: '',
     industry: '',
-    shopNumber: '',
+    shop_number: '',
     city: '',
     mall: '',
-    whatsappNumber: '',
-    ...initialData
-  });
-  
-  const [logoPreview, setLogoPreview] = useState<string | null>(initialData.logo || null);
-  const [availableMalls, setAvailableMalls] = useState<string[]>([]);
+    whatsapp_number: ''
+  })
 
-  // Set available malls when city changes or on initial load
+  const [categories, setCategories] = useState<Category[]>([])
+  const [customCategory, setCustomCategory] = useState('')
+  const [showCustomInput, setShowCustomInput] = useState(false)
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false)
+
+  // Fetch existing categories
   useEffect(() => {
-    if (formData.city) {
-      setAvailableMalls(mallsByCity[formData.city] || []);
+    fetchCategories()
+  }, [])
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories')
+      if (response.ok) {
+        const data = await response.json()
+        setCategories(data)
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error)
     }
-  }, [formData.city]);
+  }
 
-  // Handle city change
-  const handleCityChange = (city: string) => {
-    setFormData(prev => ({ ...prev, city, mall: '' }));
-    setAvailableMalls(mallsByCity[city] || []);
-  };
+  const handleInputChange = (field: keyof ShopFormData, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
 
-  // Handle logo upload
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setLogoPreview(event.target.result as string);
-          setFormData(prev => ({ ...prev, logo: file.name }));
-        }
-      };
-      reader.readAsDataURL(file);
+  const handleCategorySelect = (value: string) => {
+    if (value === 'custom') {
+      setShowCustomInput(true)
+      setFormData(prev => ({ ...prev, industry: '' }))
+    } else {
+      setShowCustomInput(false)
+      setCustomCategory('')
+      setFormData(prev => ({ ...prev, industry: value }))
     }
-  };
+  }
 
-  // Handle form submission
-  const handleSubmit = () => {
-    // Add logo preview to form data
-    const submitData = {
-      ...formData,
-      logo: logoPreview || '',
-    } as ShopFormData;
+  const createCustomCategory = async () => {
+    if (!customCategory.trim()) {
+      toast.error('Please enter a category name')
+      return
+    }
+
+    setIsCreatingCategory(true)
+    try {
+      const response = await fetch('/api/categories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: customCategory.trim()
+        })
+      })
+
+      if (response.ok) {
+        const newCategory = await response.json()
+        
+        // Update categories list
+        setCategories(prev => [...prev, newCategory].sort((a, b) => a.name.localeCompare(b.name)))
+        
+        // Set the new category as selected
+        setFormData(prev => ({ ...prev, industry: newCategory.name }))
+        
+        // Reset custom input
+        setCustomCategory('')
+        setShowCustomInput(false)
+        
+        toast.success(`Category "${newCategory.name}" created successfully!`)
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to create category')
+      }
+    } catch (error) {
+      console.error('Error creating category:', error)
+      toast.error('Failed to create category')
+    } finally {
+      setIsCreatingCategory(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     
-    onSubmit(submitData);
-  };
+    // Validation
+    if (!formData.name.trim()) {
+      toast.error('Shop name is required')
+      return
+    }
+    
+    if (!formData.industry.trim()) {
+      toast.error('Please select or create a category')
+      return
+    }
+    
+    if (!formData.shop_number.trim()) {
+      toast.error('Shop number is required')
+      return
+    }
+    
+    if (!formData.city.trim()) {
+      toast.error('City is required')
+      return
+    }
+    
+    if (!formData.mall.trim()) {
+      toast.error('Mall is required')
+      return
+    }
+    
+    if (!formData.whatsapp_number.trim()) {
+      toast.error('WhatsApp number is required')
+      return
+    }
+
+    await onSubmit(formData)
+  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit Shop Information' : 'Register Shop'}</DialogTitle>
-          <DialogDescription>
-            {isEditing 
-              ? "Update your shop details below. Click save when you're done."
-              : "Provide your shop details to register on TekeTeke."}
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="grid gap-4 py-4">
-          <div className="flex flex-col items-center space-y-4">
-            <div className="w-32 h-32 rounded-full border-2 border-dashed flex items-center justify-center relative">
-              {logoPreview ? (
-                <Image 
-                  src={logoPreview} 
-                  alt="Logo preview" 
-                  fill
-                  sizes="128px"
-                  objectFit="cover"
-                  className="rounded-full"
-                />
-              ) : (
-                <Upload className="h-8 w-8 text-gray-400" />
-              )}
-              
-              <input
-                type="file"
-                id="logo-upload"
-                accept="image/*"
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                onChange={handleLogoUpload}
-              />
-            </div>
-            <Label htmlFor="logo-upload" className="cursor-pointer text-blue-600 text-sm">
-              {logoPreview ? 'Change Logo' : 'Upload Logo'}
-            </Label>
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardHeader>
+        <CardTitle>Register Your Shop</CardTitle>
+        <CardDescription>
+          Fill in the details below to register your shop on our platform
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="name">Shop Name *</Label>
+            <Input
+              id="name"
+              type="text"
+              value={formData.name}
+              onChange={(e) => handleInputChange('name', e.target.value)}
+              placeholder="Enter your shop name"
+              required
+            />
           </div>
-          
-          <div className="grid grid-cols-1 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="shop-name">Shop Name</Label>
-              <Input 
-                id="shop-name"
-                placeholder="Enter shop name"
-                value={formData.name || ''}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-              />
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="industry">Industry</Label>
-                <Select 
-                  value={formData.industry || ''} 
-                  onValueChange={(value) => setFormData({...formData, industry: value})}
-                >
-                  <SelectTrigger id="industry">
-                    <SelectValue placeholder="Select industry" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {industries.map((industry) => (
-                      <SelectItem key={industry} value={industry}>
-                        {industry}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="shop-number">Shop Number</Label>
-                <Input 
-                  id="shop-number"
-                  placeholder="e.g. A12"
-                  value={formData.shopNumber || ''}
-                  onChange={(e) => setFormData({...formData, shopNumber: e.target.value})}
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="city">City</Label>
-                <Select 
-                  value={formData.city || ''} 
-                  onValueChange={handleCityChange}
-                >
-                  <SelectTrigger id="city">
-                    <SelectValue placeholder="Select city" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cities.map((city) => (
-                      <SelectItem key={city} value={city}>
-                        {city}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="mall">Mall</Label>
-                <Select 
-                  value={formData.mall || ''} 
-                  onValueChange={(value) => setFormData({...formData, mall: value})}
-                  disabled={!formData.city}
-                >
-                  <SelectTrigger id="mall">
-                    <SelectValue placeholder={formData.city ? "Select mall" : "Select city first"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableMalls.map((mall) => (
-                      <SelectItem key={mall} value={mall}>
-                        {mall}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="whatsapp">WhatsApp Business Number</Label>
-              <Input 
-                id="whatsapp"
-                placeholder="+254 123456789"
-                value={formData.whatsappNumber || ''}
-                onChange={(e) => setFormData({...formData, whatsappNumber: e.target.value})}
-              />
-            </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="logo">Logo URL (Optional)</Label>
+            <Input
+              id="logo"
+              type="url"
+              value={formData.logo}
+              onChange={(e) => handleInputChange('logo', e.target.value)}
+              placeholder="https://example.com/logo.png"
+            />
           </div>
-        </div>
-        
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
-            Cancel
+
+          <div className="space-y-2">
+            <Label htmlFor="industry">Category *</Label>
+            {!showCustomInput ? (
+              <Select onValueChange={handleCategorySelect} value={formData.industry}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a category or create new" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.name}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="custom">+ Create New Category</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                  placeholder="Enter new category name"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      createCustomCategory()
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  onClick={createCustomCategory}
+                  disabled={isCreatingCategory}
+                  size="sm"
+                >
+                  {isCreatingCategory ? 'Creating...' : 'Create'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowCustomInput(false)
+                    setCustomCategory('')
+                  }}
+                  size="sm"
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="shop_number">Shop Number *</Label>
+            <Input
+              id="shop_number"
+              type="text"
+              value={formData.shop_number}
+              onChange={(e) => handleInputChange('shop_number', e.target.value)}
+              placeholder="e.g., A-12, B-45"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="city">City *</Label>
+            <Input
+              id="city"
+              type="text"
+              value={formData.city}
+              onChange={(e) => handleInputChange('city', e.target.value)}
+              placeholder="Enter your city"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="mall">Mall/Location *</Label>
+            <Input
+              id="mall"
+              type="text"
+              value={formData.mall}
+              onChange={(e) => handleInputChange('mall', e.target.value)}
+              placeholder="Enter mall or location name"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="whatsapp_number">WhatsApp Number *</Label>
+            <Input
+              id="whatsapp_number"
+              type="tel"
+              value={formData.whatsapp_number}
+              onChange={(e) => handleInputChange('whatsapp_number', e.target.value)}
+              placeholder="+254712345678"
+              required
+            />
+          </div>
+
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? 'Registering...' : 'Register Shop'}
           </Button>
-          <Button onClick={handleSubmit} disabled={isLoading}>
-            {isLoading ? 'Saving...' : isEditing ? 'Save Changes' : 'Register Shop'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
+        </form>
+      </CardContent>
+    </Card>
+  )
 }

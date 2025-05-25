@@ -1,5 +1,7 @@
-import Link from "next/link"
+'use client';
 
+import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -10,10 +12,13 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { login } from "@/lib/auth-actions"
 import SignInWithGoogleButton from "./SigninWithGoogleButton"
 
 export function LoginForm() {
+  const searchParams = useSearchParams()
+  const error = searchParams.get('error')
   return (
     <Card className="mx-auto max-w-sm">
       <CardHeader>
@@ -23,6 +28,11 @@ export function LoginForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {error && (
+          <Alert className="mb-4" variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
         <form action="">
             <div className="grid gap-4">
               <div className="grid gap-2">

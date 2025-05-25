@@ -12,20 +12,36 @@ export async function login(formData: FormData) {
 
   // Basic validation
   if (!email || !password) {
-    redirect("/error?message=Email and password are required");
+    redirect("/sign-in?error=Email and password are required");
   }
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
   if (error) {
-    redirect(`/error?message=${encodeURIComponent(error.message)}`);
+    // Handle specific error cases
+    let errorMessage = "Login failed. Please try again.";
+    
+    if (error.message.includes("Invalid login credentials")) {
+      errorMessage = "Invalid email or password. Please check your credentials and try again.";
+    } else if (error.message.includes("Email not confirmed")) {
+      errorMessage = "Please check your email and click the confirmation link before signing in.";
+    } else if (error.message.includes("Too many requests")) {
+      errorMessage = "Too many login attempts. Please wait a moment and try again.";
+    } else if (error.message.includes("User not found")) {
+      errorMessage = "No account found with this email address. Please sign up first.";
+    }
+    
+    redirect(`/sign-in?error=${encodeURIComponent(errorMessage)}`);
   }
 
-  revalidatePath("/", "layout");
-  redirect("/shop/dashboard"); // Redirect to dashboard after successful login
+  // Check if user exists and redirect appropriately
+  if (data.user) {
+    revalidatePath("/", "layout");
+    redirect("/shop/dashboard");
+  }
 }
 
 export async function signup(formData: FormData) {
@@ -38,15 +54,15 @@ export async function signup(formData: FormData) {
 
   // Basic validation
   if (!firstName || !lastName || !email || !password) {
-    redirect("/error?message=All fields are required");
+    redirect("/sign-up?error=All fields are required");
   }
 
   if (!email.includes("@")) {
-    redirect("/error?message=Please enter a valid email address");
+    redirect("/sign-up?error=Please enter a valid email address");
   }
 
   if (password.length < 6) {
-    redirect("/error?message=Password must be at least 6 characters long");
+    redirect("/sign-up?error=Password must be at least 6 characters long");
   }
 
   const { data: authData, error } = await supabase.auth.signUp({
@@ -61,7 +77,17 @@ export async function signup(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/error?message=${encodeURIComponent(error.message)}`);
+    let errorMessage = "Sign up failed. Please try again.";
+    
+    if (error.message.includes("User already registered")) {
+      errorMessage = "An account with this email already exists. Please sign in instead.";
+    } else if (error.message.includes("Password should be at least")) {
+      errorMessage = "Password must be at least 6 characters long.";
+    } else if (error.message.includes("Invalid email")) {
+      errorMessage = "Please enter a valid email address.";
+    }
+    
+    redirect(`/sign-up?error=${encodeURIComponent(errorMessage)}`);
   }
 
   // Check if user needs to confirm email
@@ -71,7 +97,7 @@ export async function signup(formData: FormData) {
   } else {
     // User is automatically confirmed (if email confirmation is disabled)
     revalidatePath("/", "layout");
-    redirect("/dashboard");
+    redirect("/shop/dashboard");
   }
 }
 
@@ -86,7 +112,7 @@ export async function signout() {
   }
 
   revalidatePath("/", "layout");
-  redirect("/shop/dashboard");
+  redirect("/");
 }
 
 export async function signInWithGoogle() {
