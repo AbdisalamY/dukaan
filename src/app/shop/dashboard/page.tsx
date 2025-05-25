@@ -47,10 +47,10 @@ export default function ShopDashboard() {
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="mb-8 text-center">
+    <div className="container mx-auto py-2">
+      <div className="mb-4 text-center">
         <h1 className="text-3xl font-bold">Shop Dashboard</h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-muted-foreground mt-1">
           Register your shop to start accepting payments and managing your business
         </p>
       </div>

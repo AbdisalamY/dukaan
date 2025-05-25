@@ -41,7 +41,6 @@ export function SignUpForm() {
                 <Input
                   id="first-name"
                   name="first-name"
-                  placeholder="Max"
                   required
                 />
               </div>
@@ -50,7 +49,6 @@ export function SignUpForm() {
                 <Input
                   id="last-name"
                   name="last-name"
-                  placeholder="Robinson"
                   required
                 />
               </div>
@@ -61,7 +59,6 @@ export function SignUpForm() {
                 id="email"
                 name="email"
                 type="email"
-                placeholder="m@example.com"
                 required
               />
             </div>

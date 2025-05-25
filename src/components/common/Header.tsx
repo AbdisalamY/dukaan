@@ -1,59 +1,29 @@
 "use client";
 import { usePathname, useRouter } from "next/navigation";
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Search } from 'lucide-react';
-import { db } from '@/lib/database';
+import { Search, LogOut, User } from 'lucide-react';
+import { signout } from '@/lib/auth-actions';
+import { useAuth } from '@/hooks/useAuth';
 
 const Header: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
+  const { user, profile, loading, isAuthenticated } = useAuth();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  
   const isAuthPage =
     pathname === "/sign-in" ||
     pathname === "/sign-up" ||
-    pathname === "/forgot-password";
+    pathname === "/forgot-password" ||
+    pathname === "/confirm-email";
 
-  const [profile, setProfile] = useState<any>(null);
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let mounted = true;
-    
-    const fetchUserData = async () => {
-      try {
-        // Get both the auth user and profile data
-        const [authUser, userProfile] = await Promise.all([
-          db.getCurrentUser(),
-          db.getUserProfile()
-        ]);
-        
-        if (mounted) {
-          setUser(authUser);
-          setProfile(userProfile);
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchUserData();
-    return () => { mounted = false; };
-  }, []);
-
-  if (isAuthPage) return null;
-
-  // Check if we're in protected areas (shop or admin)
+  const isPublicPage = pathname === '/';
   const isProtectedArea = pathname.startsWith("/shop") || pathname.startsWith("/admin");
-  const isAdminArea = pathname.startsWith("/admin");
 
   // Get user display name with priority for Google account name - FIRST NAME ONLY
-  const getUserDisplayName = () => {
+  const getUserDisplayName = useCallback(() => {
     let fullName = '';
     
     // First priority: Google account name from user metadata
@@ -81,8 +51,28 @@ const Header: React.FC = () => {
     }
     
     // Extract first name only
-    return fullName.split(' ')[0];
-  };
+    return fullName.split(' ')[0] || 'User';
+  }, [user, profile]);
+
+  // Handle logout
+  const handleLogout = useCallback(async () => {
+    if (isSigningOut) return;
+    
+    setIsSigningOut(true);
+    try {
+      // Call server action to sign out
+      await signout();
+    } catch (error) {
+      console.error('Error signing out:', error);
+      // Refresh the page as fallback
+      window.location.href = '/';
+    } finally {
+      setIsSigningOut(false);
+    }
+  }, [isSigningOut]);
+
+  // Don't render header on auth pages
+  if (isAuthPage) return null;
 
   return (
     <header className="fixed top-0 left-0 w-full z-50 bg-white border-b border-gray-200 py-4">
@@ -121,42 +111,82 @@ const Header: React.FC = () => {
         
         {/* Right Side */}
         <div className="flex items-center space-x-4">
-          {/* Show login/signup buttons only on home page when not authenticated */}
-          {!loading && !user && !isProtectedArea && (
+          {isPublicPage ? (
+            // Public page - always show sign up and login
             <>
               <button
                 onClick={() => router.push("/sign-up")}
-                className="text-indigo-700 font-semibold text-base bg-transparent border-none shadow-none hover:underline focus:outline-none transition-colors cursor-pointer"
+                className="text-indigo-700 font-semibold text-base bg-transparent border-none shadow-none focus:outline-none transition-colors cursor-pointer hover:text-indigo-900"
                 style={{ minWidth: 0, padding: 0 }}
               >
                 Become a Partner
               </button>
               <Button
                 onClick={() => router.push("/sign-in")}
-                className="rounded-full bg-indigo-700 hover:bg-[#4C1D95] text-white font-semibold px-6 py-2 text-base border-none shadow-none cursor-pointer"
+                className="rounded-full bg-[#5B21B6] hover:bg-[#4C1D95] text-white font-semibold px-6 py-2 text-base border-none shadow-none cursor-pointer"
                 style={{ minWidth: 0 }}
               >
                 Log in
               </Button>
             </>
-          )}
-          
-          {/* Show user info and logout when authenticated OR in protected areas */}
-          {!loading && (user || isProtectedArea) && (
-            <>
-              <span className="text-gray-700 text-sm font-medium">
-                {isAdminArea ? `Admin, ${getUserDisplayName()}` : `Hello, ${getUserDisplayName()}`}
-              </span>
+          ) : isProtectedArea ? (
+            // Protected area - show user info if authenticated, login button if not
+            loading ? (
+              // Loading state
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-sm text-gray-500">Loading...</span>
+              </div>
+            ) : isAuthenticated ? (
+              // Authenticated user
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  <User size={16} className="text-gray-600" />
+                  <span className="text-gray-700 text-sm font-medium">
+                    Hello, {getUserDisplayName()}
+                  </span>
+                </div>
+                <Button
+                  onClick={handleLogout}
+                  disabled={isSigningOut}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center space-x-1 text-sm font-medium"
+                >
+                  {isSigningOut ? (
+                    <div className="w-3 h-3 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <LogOut size={14} />
+                  )}
+                  <span>{isSigningOut ? 'Signing out...' : 'Logout'}</span>
+                </Button>
+              </div>
+            ) : (
+              // Not authenticated in protected area
               <Button
-                onClick={async () => {
-                  await import("@/lib/auth-actions").then(mod => mod.signout());
-                  setProfile(null);
-                  setUser(null);
-                  router.push('/');
-                }}
-                className="text-sm font-medium bg-red-600 hover:bg-red-700 text-white"
+                onClick={() => router.push("/sign-in")}
+                className="rounded-full bg-[#5B21B6] hover:bg-[#4C1D95] text-white font-semibold px-6 py-2 text-base border-none shadow-none cursor-pointer"
+                style={{ minWidth: 0 }}
               >
-                Logout
+                Log in
+              </Button>
+            )
+          ) : (
+            // Other pages - show public header
+            <>
+              <button
+                onClick={() => router.push("/sign-up")}
+                className="text-indigo-700 font-semibold text-base bg-transparent border-none shadow-none focus:outline-none transition-colors cursor-pointer hover:text-indigo-900"
+                style={{ minWidth: 0, padding: 0 }}
+              >
+                Become a Partner
+              </button>
+              <Button
+                onClick={() => router.push("/sign-in")}
+                className="rounded-full bg-[#5B21B6] hover:bg-[#4C1D95] text-white font-semibold px-6 py-2 text-base border-none shadow-none cursor-pointer"
+                style={{ minWidth: 0 }}
+              >
+                Log in
               </Button>
             </>
           )}
