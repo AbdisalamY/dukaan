@@ -27,11 +27,12 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { db, DatabasePayment } from '@/lib/database';
 
 // Types
 interface PaymentHistoryItem {
-  id: number;
+  id: string;
   date: string;
   amount: string;
   method: string;
@@ -40,123 +41,118 @@ interface PaymentHistoryItem {
 }
 
 interface ShopPayment {
-  id: number;
+  id: string;
   shopName: string;
   owner: string;
-  status: 'Paid' | 'Overdue';
+  status: 'pending' | 'paid' | 'failed' | 'refunded';
   lastPayment: string;
   nextPayment: string;
   amount: string;
+  shop_id: string;
 }
-
-// Mock data
-const mockPayments: ShopPayment[] = [
-  {
-    id: 1,
-    shopName: 'Fashion Hub',
-    owner: 'Jane Smith',
-    status: 'Paid',
-    lastPayment: 'Apr 15, 2025',
-    nextPayment: 'May 15, 2025',
-    amount: 'KES 5,000'
-  },
-  {
-    id: 2,
-    shopName: 'Tech World',
-    owner: 'John Doe',
-    status: 'Overdue',
-    lastPayment: 'Mar 20, 2025',
-    nextPayment: 'Apr 20, 2025',
-    amount: 'KES 5,000'
-  },
-  {
-    id: 3,
-    shopName: 'Beauty Palace',
-    owner: 'Mary Wanjiku',
-    status: 'Overdue',
-    lastPayment: 'Feb 10, 2025',
-    nextPayment: 'Mar 10, 2025',
-    amount: 'KES 5,000'
-  },
-  {
-    id: 4,
-    shopName: 'Shoe Haven',
-    owner: 'David Kamau',
-    status: 'Paid',
-    lastPayment: 'Apr 5, 2025',
-    nextPayment: 'May 5, 2025',
-    amount: 'KES 5,000'
-  },
-  {
-    id: 5,
-    shopName: 'Kitchen Plus',
-    owner: 'Sarah Ouma',
-    status: 'Overdue',
-    lastPayment: 'Mar 25, 2025',
-    nextPayment: 'Apr 25, 2025',
-    amount: 'KES 5,000'
-  }
-];
 
 const paymentStatuses = [
   { value: 'all', label: 'All Statuses' },
   { value: 'paid', label: 'Paid' },
-  { value: 'overdue', label: 'Overdue' }
+  { value: 'pending', label: 'Pending' },
+  { value: 'failed', label: 'Failed' },
+  { value: 'refunded', label: 'Refunded' }
 ];
-
-// Mock payment history data per shop ID
-const getPaymentHistoryByShopId = (shopId: number): PaymentHistoryItem[] => {
-  switch(shopId) {
-    case 1: // Fashion Hub
-      return [
-        { id: 1, date: 'Apr 15, 2025', amount: 'KES 5,000', method: 'M-Pesa', status: 'Completed', reference: 'MP12345678' },
-        { id: 2, date: 'Mar 15, 2025', amount: 'KES 5,000', method: 'M-Pesa', status: 'Completed', reference: 'MP12345123' },
-        { id: 3, date: 'Feb 15, 2025', amount: 'KES 5,000', method: 'Bank Transfer', status: 'Completed', reference: 'BT98765432' }
-      ];
-    case 2: // Tech World
-      return [
-        { id: 1, date: 'Mar 20, 2025', amount: 'KES 5,000', method: 'M-Pesa', status: 'Completed', reference: 'MP87654321' },
-        { id: 2, date: 'Feb 20, 2025', amount: 'KES 5,000', method: 'Bank Transfer', status: 'Completed', reference: 'BT23456789' }
-      ];
-    case 3: // Beauty Palace
-      return [
-        { id: 1, date: 'Feb 10, 2025', amount: 'KES 5,000', method: 'M-Pesa', status: 'Completed', reference: 'MP11223344' },
-        { id: 2, date: 'Jan 10, 2025', amount: 'KES 5,000', method: 'M-Pesa', status: 'Completed', reference: 'MP55667788' }
-      ];
-    case 4: // Shoe Haven
-      return [
-        { id: 1, date: 'Apr 5, 2025', amount: 'KES 5,000', method: 'Bank Transfer', status: 'Completed', reference: 'BT99887766' },
-        { id: 2, date: 'Mar 5, 2025', amount: 'KES 5,000', method: 'M-Pesa', status: 'Completed', reference: 'MP33445566' }
-      ];
-    case 5: // Kitchen Plus
-      return [
-        { id: 1, date: 'Mar 25, 2025', amount: 'KES 5,000', method: 'M-Pesa', status: 'Completed', reference: 'MP00112233' },
-        { id: 2, date: 'Feb 25, 2025', amount: 'KES 5,000', method: 'Bank Transfer', status: 'Completed', reference: 'BT44556677' }
-      ];
-    default:
-      return [];
-  }
-};
 
 export default function PaymentManagementPage() {
   // State
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [payments, setPayments] = useState<ShopPayment[]>(mockPayments);
+  const [payments, setPayments] = useState<ShopPayment[]>([]);
+  const [loading, setLoading] = useState(true);
   const [paymentSettings, setPaymentSettings] = useState({
     monthlyFee: '5000',
     paymentDuration: '30'
   });
-  const [markPaidDialog, setMarkPaidDialog] = useState<{open: boolean, shopId: number | null, shopName: string}>({
+  const [markPaidDialog, setMarkPaidDialog] = useState<{open: boolean, shopId: string | null, shopName: string}>({
     open: false,
     shopId: null,
     shopName: ''
   });
-  const [paymentHistoryDialog, setPaymentHistoryDialog] = useState<{open: boolean, shopId: number | null, shopName: string}>({
+  const [paymentHistoryDialog, setPaymentHistoryDialog] = useState<{open: boolean, shopId: string | null, shopName: string}>({
     open: false,
     shopId: null,
     shopName: ''
   });
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
+
+  // Fetch payments from database
+  useEffect(() => {
+    const fetchPayments = async () => {
+      try {
+        setLoading(true);
+        const response = await db.getPayments({
+          search: searchTerm,
+          status: statusFilter === 'all' ? undefined : statusFilter,
+          limit: 100
+        });
+
+        const transformedPayments: ShopPayment[] = response.payments?.map((payment: DatabasePayment) => ({
+          id: payment.id,
+          shopName: payment.shops?.name || 'Unknown Shop',
+          owner: payment.shops?.profiles?.full_name || payment.shops?.profiles?.email || 'Unknown',
+          status: payment.status,
+          lastPayment: payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          }) : 'Never',
+          nextPayment: new Date(payment.due_date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          }),
+          amount: `${payment.currency} ${payment.amount.toLocaleString()}`,
+          shop_id: payment.shop_id
+        })) || [];
+
+        setPayments(transformedPayments);
+      } catch (error) {
+        console.error('Error fetching payments:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPayments();
+  }, [searchTerm, statusFilter]);
+
+  // Fetch payment history for a specific shop
+  const fetchPaymentHistory = async (shopId: string) => {
+    try {
+      const response = await db.getPayments({
+        shop_id: shopId,
+        limit: 50
+      });
+
+      const history: PaymentHistoryItem[] = response.payments?.map((payment: DatabasePayment) => ({
+        id: payment.id,
+        date: payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        }) : new Date(payment.created_at).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        }),
+        amount: `${payment.currency} ${payment.amount.toLocaleString()}`,
+        method: payment.payment_method || 'Unknown',
+        status: payment.status,
+        reference: payment.transaction_id || 'N/A'
+      })) || [];
+
+      setPaymentHistory(history);
+    } catch (error) {
+      console.error('Error fetching payment history:', error);
+      setPaymentHistory([]);
+    }
+  };
 
   // Filter payments based on search term and selected filter
   const filteredPayments = payments.filter(payment => {
@@ -165,7 +161,7 @@ export default function PaymentManagementPage() {
       payment.owner.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || 
-      payment.status.toLowerCase() === statusFilter.toLowerCase();
+      payment.status === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
@@ -176,29 +172,61 @@ export default function PaymentManagementPage() {
     console.log('Saving payment settings:', paymentSettings);
   };
 
-  const handleMarkAsPaid = () => {
+  const handleMarkAsPaid = async () => {
     if (markPaidDialog.shopId) {
-      // In a real app, this would call an API to mark a payment as paid
-      setPayments(payments.map(payment => 
-        payment.id === markPaidDialog.shopId 
-          ? { ...payment, status: 'Paid' as const } 
-          : payment
-      ));
-      setMarkPaidDialog({ open: false, shopId: null, shopName: '' });
+      try {
+        const payment = payments.find(p => p.shop_id === markPaidDialog.shopId);
+        if (payment) {
+          await db.updatePayment(payment.id, { 
+            status: 'paid',
+            payment_date: new Date().toISOString(),
+            payment_method: 'Manual'
+          });
+          
+          setPayments(payments.map(p => 
+            p.shop_id === markPaidDialog.shopId 
+              ? { ...p, status: 'paid' as const } 
+              : p
+          ));
+        }
+        setMarkPaidDialog({ open: false, shopId: null, shopName: '' });
+      } catch (error) {
+        console.error('Error marking payment as paid:', error);
+      }
     }
+  };
+
+  const handleViewPaymentHistory = (shopId: string, shopName: string) => {
+    setPaymentHistoryDialog({ open: true, shopId, shopName });
+    fetchPaymentHistory(shopId);
   };
 
   // Helper function to get status badge
   const getStatusBadge = (status: ShopPayment['status']) => {
     switch(status) {
-      case 'Paid':
+      case 'paid':
         return <Badge className="bg-green-100 text-green-800 border-green-200">Paid</Badge>;
-      case 'Overdue':
-        return <Badge className="bg-red-100 text-red-800 border-red-200">Overdue</Badge>;
+      case 'pending':
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Pending</Badge>;
+      case 'failed':
+        return <Badge className="bg-red-100 text-red-800 border-red-200">Failed</Badge>;
+      case 'refunded':
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Refunded</Badge>;
       default:
         return <Badge variant="secondary">Unknown</Badge>;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading payments...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -304,25 +332,21 @@ export default function PaymentManagementPage() {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => setPaymentHistoryDialog({
-                            open: true,
-                            shopId: payment.id,
-                            shopName: payment.shopName
-                          })}
+                          onClick={() => handleViewPaymentHistory(payment.shop_id, payment.shopName)}
                         >
                           Payment History
                         </Button>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center space-x-2">
-                          {payment.status === 'Overdue' && (
+                          {(payment.status === 'pending' || payment.status === 'failed') && (
                             <Button 
                               size="sm" 
                               variant="outline" 
                               className="text-green-600"
                               onClick={() => setMarkPaidDialog({
                                 open: true,
-                                shopId: payment.id,
+                                shopId: payment.shop_id,
                                 shopName: payment.shopName
                               })}
                             >
@@ -338,15 +362,18 @@ export default function PaymentManagementPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              {payment.status === 'Overdue' && (
+                              {(payment.status === 'pending' || payment.status === 'failed') && (
                                 <DropdownMenuItem onClick={() => setMarkPaidDialog({
                                   open: true,
-                                  shopId: payment.id,
+                                  shopId: payment.shop_id,
                                   shopName: payment.shopName
                                 })}>
                                   Mark as Paid
                                 </DropdownMenuItem>
                               )}
+                              <DropdownMenuItem onClick={() => handleViewPaymentHistory(payment.shop_id, payment.shopName)}>
+                                View Payment History
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -374,7 +401,7 @@ export default function PaymentManagementPage() {
           <DialogHeader>
             <DialogTitle>Mark Payment as Paid</DialogTitle>
             <DialogDescription>
-              Are you sure you want to mark the payment for "{markPaidDialog.shopName}" as paid? This will reactivate the shop.
+              Are you sure you want to mark the payment for "{markPaidDialog.shopName}" as paid? This will update the payment status.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -417,16 +444,18 @@ export default function PaymentManagementPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paymentHistoryDialog.shopId && getPaymentHistoryByShopId(paymentHistoryDialog.shopId).map((item) => (
+                  {paymentHistory.map((item) => (
                     <tr key={item.id} className="border-b last:border-0">
                       <td className="py-2 px-4 text-xs">{item.date}</td>
                       <td className="py-2 px-4 text-xs">{item.amount}</td>
                       <td className="py-2 px-4 text-xs">{item.method}</td>
                       <td className="py-2 px-4 text-xs">
                         <Badge 
-                          className={item.status === 'Completed' 
+                          className={item.status === 'paid' 
                             ? "bg-green-100 text-green-800 border-green-200" 
-                            : "bg-yellow-100 text-yellow-800 border-yellow-200"
+                            : item.status === 'pending'
+                            ? "bg-yellow-100 text-yellow-800 border-yellow-200"
+                            : "bg-red-100 text-red-800 border-red-200"
                           }
                         >
                           {item.status}
@@ -435,7 +464,7 @@ export default function PaymentManagementPage() {
                       <td className="py-2 px-4 text-xs font-mono">{item.reference}</td>
                     </tr>
                   ))}
-                  {(!paymentHistoryDialog.shopId || getPaymentHistoryByShopId(paymentHistoryDialog.shopId).length === 0) && (
+                  {paymentHistory.length === 0 && (
                     <tr>
                       <td colSpan={5} className="py-4 text-center text-xs text-gray-500">
                         No payment history found.

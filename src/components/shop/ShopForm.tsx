@@ -42,19 +42,25 @@ export interface ShopFormData {
   whatsappNumber: string;
 }
 
-// Mock industries data
+// Industries from database categories
 const industries = [
-  'Apparel', 
+  'Fashion', 
   'Electronics', 
-  'Food & Beverage', 
-  'Health & Beauty', 
-  'Home & Garden',
-  'Jewelry',
+  'Groceries', 
+  'Toys', 
+  'Books', 
+  'Beauty',
+  'Apparel',
   'Shoes',
-  'Sport & Fitness'
+  'Home & Kitchen',
+  'Jewelry',
+  'Sport & Fitness',
+  'Health & Beauty',
+  'Food & Beverage',
+  'Home & Garden'
 ];
 
-// Mock cities data
+// Cities data - these could be fetched from database in the future
 const cities = ['Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Eldoret'];
 
 // Mock malls by city
