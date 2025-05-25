@@ -192,6 +192,9 @@ export default function ShopForm({ onSubmit, isLoading = false }: ShopFormProps)
               onChange={(e) => handleInputChange('logo', e.target.value)}
               placeholder="https://example.com/logo.png"
             />
+            <p className="text-sm text-muted-foreground">
+              Upload your logo to a service like Imgur or use your website URL
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -292,6 +295,9 @@ export default function ShopForm({ onSubmit, isLoading = false }: ShopFormProps)
               placeholder="+254712345678"
               required
             />
+            <p className="text-sm text-muted-foreground">
+              Include country code (e.g., +254 for Kenya)
+            </p>
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>

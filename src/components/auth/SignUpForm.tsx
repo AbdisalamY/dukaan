@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { signup } from "@/lib/auth-actions";
+import SignInWithGoogleButton from "./SigninWithGoogleButton";
 
 export function SignUpForm() {
   const searchParams = useSearchParams();
@@ -23,7 +24,7 @@ export function SignUpForm() {
       <CardHeader>
         <CardTitle className="text-xl">Sign Up</CardTitle>
         <CardDescription>
-          Enter your information to create an account
+          Create your account to start managing your shop
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -32,23 +33,24 @@ export function SignUpForm() {
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
-        {/* ✅ Fix: Add the signup action to the form */}
-        <form action={signup}>
+        <form action="">
           <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="first-name">First name</Label>
                 <Input
-                  name="first-name"
                   id="first-name"
+                  name="first-name"
+                  placeholder="Max"
                   required
                 />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="last-name">Last name</Label>
                 <Input
-                  name="last-name"
                   id="last-name"
+                  name="last-name"
+                  placeholder="Robinson"
                   required
                 />
               </div>
@@ -56,28 +58,36 @@ export function SignUpForm() {
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input
-                name="email"
                 id="email"
+                name="email"
                 type="email"
-                placeholder="email"
+                placeholder="m@example.com"
                 required
               />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="password">Password</Label>
-              <Input 
-                name="password" 
-                id="password" 
-                type="password" 
-                placeholder="password"
-                minLength={6}
+              <Input
+                id="password"
+                name="password"
+                type="password"
                 required
               />
             </div>
-            {/* ✅ Remove formAction since we're using action on form */}
-            <Button type="submit" className="w-full">
-              Create an account
+            <Button type="submit" formAction={signup} className="w-full">
+              Create account
             </Button>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+            <SignInWithGoogleButton text="Sign up with Google" />
           </div>
         </form>
         <div className="mt-4 text-center text-sm">

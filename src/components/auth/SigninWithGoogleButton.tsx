@@ -3,7 +3,11 @@ import { Button } from "@/components/ui/button";
 import { signInWithGoogle } from "@/lib/auth-actions";
 import React from "react";
 
-const SignInWithGoogleButton = () => {
+interface SignInWithGoogleButtonProps {
+  text?: string;
+}
+
+const SignInWithGoogleButton = ({ text = "Continue with Google" }: SignInWithGoogleButtonProps) => {
   return (
     <Button
       type="button"
@@ -13,7 +17,7 @@ const SignInWithGoogleButton = () => {
         signInWithGoogle();
       }}
     >
-      Login with Google
+      {text}
     </Button>
   );
 };
