@@ -1,323 +1,423 @@
+// src/components/shop/ShopForm.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm } from 'react-hook-form'
+import * as z from 'zod'
+import Image from 'next/image'
+import { Upload, X } from 'lucide-react'
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { toast } from 'sonner'
-import { createClient } from '@/utils/supabase/client'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { LoadingStates } from '@/components/common/LoadingSpinner'
+import { useIndustries, useCities, useMalls, useCreateShop, useUpdateShop } from '@/hooks/api-hooks'
 
-interface Category {
-  id: string
-  name: string
-  description: string
-}
+const shopFormSchema = z.object({
+  name: z.string().min(2, 'Shop name must be at least 2 characters'),
+  industry: z.string().min(1, 'Please select an industry'),
+  shopNumber: z.string().min(1, 'Shop number is required'),
+  city: z.string().min(1, 'Please select a city'),
+  mall: z.string().min(1, 'Please select a mall'),
+  whatsappNumber: z.string().min(10, 'Please enter a valid WhatsApp number'),
+  logo: z.string().optional(),
+})
 
-interface ShopFormData {
-  name: string
-  logo: string
-  industry: string
-  shop_number: string
-  city: string
-  mall: string
-  whatsapp_number: string
-}
+export type ShopFormData = z.infer<typeof shopFormSchema>
 
 interface ShopFormProps {
-  onSubmit: (data: ShopFormData) => Promise<void>
+  isOpen: boolean
+  onClose: () => void
+  onSubmit: (data: ShopFormData) => void
+  initialData?: Partial<ShopFormData & { id?: string }>
   isLoading?: boolean
+  isEditing?: boolean
 }
 
-interface City { id: string; name: string; }
-interface Mall { id: string; name: string; city_id: string; }
+export function ShopForm({
+  isOpen,
+  onClose,
+  initialData = {},
+  isEditing = false,
+}: ShopFormProps) {
+  const [logoPreview, setLogoPreview] = useState<string | null>(initialData.logo || null)
+  const [selectedCity, setSelectedCity] = useState<string>(initialData.city || '')
 
-export default function ShopForm({ onSubmit, isLoading = false }: ShopFormProps) {
-  const [formData, setFormData] = useState<ShopFormData>({
-    name: '',
-    logo: '',
-    industry: '',
-    shop_number: '',
-    city: '',
-    mall: '',
-    whatsapp_number: ''
+  // React Query hooks
+  const { data: industriesData, isLoading: industriesLoading } = useIndustries()
+  const { data: citiesData, isLoading: citiesLoading } = useCities()
+  const { data: mallsData, isLoading: mallsLoading } = useMalls(selectedCity)
+  
+  const createShopMutation = useCreateShop()
+  const updateShopMutation = useUpdateShop()
+
+  const form = useForm<ShopFormData>({
+    resolver: zodResolver(shopFormSchema),
+    defaultValues: {
+      name: initialData.name || '',
+      industry: initialData.industry || '',
+      shopNumber: initialData.shopNumber || '',
+      city: initialData.city || '',
+      mall: initialData.mall || '',
+      whatsappNumber: initialData.whatsappNumber || '',
+      logo: initialData.logo || '',
+    },
   })
 
-  const [categories, setCategories] = useState<Category[]>([])
-  const [cities, setCities] = useState<City[]>([])
-  const [malls, setMalls] = useState<Mall[]>([])
-  const [logoFile, setLogoFile] = useState<File|null>(null)
-  const [logoPreview, setLogoPreview] = useState<string>('')
-  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const isSubmitting = createShopMutation.isPending || updateShopMutation.isPending
 
-  // Fetch existing categories
+  // Watch city changes to update malls
+  const watchedCity = form.watch('city')
+  
   useEffect(() => {
-    fetchCategories()
-    fetchCities()
-  }, [])
-
-  useEffect(() => {
-    if (formData.city) fetchMalls(formData.city)
-    else setMalls([])
-  }, [formData.city])
-
-  const fetchCategories = async () => {
-    try {
-      const response = await fetch('/api/categories')
-      if (response.ok) {
-        const data = await response.json()
-        setCategories(data)
+    if (watchedCity !== selectedCity) {
+      setSelectedCity(watchedCity)
+      // Reset mall selection when city changes
+      if (form.getValues('mall')) {
+        form.setValue('mall', '')
       }
-    } catch (error) {
-      console.error('Error fetching categories:', error)
     }
-  }
+  }, [watchedCity, selectedCity, form])
 
-  const fetchCities = async () => {
-    try {
-      const res = await fetch('/api/cities')
-      if (res.ok) setCities(await res.json())
-    } catch (e) { console.error('Error fetching cities:', e) }
-  }
-
-  const fetchMalls = async (cityId: string) => {
-    try {
-      const res = await fetch(`/api/malls?city_id=${cityId}`)
-      if (res.ok) setMalls(await res.json())
-    } catch (e) { console.error('Error fetching malls:', e) }
-  }
-
-  const handleInputChange = (field: keyof ShopFormData, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }))
-  }
-
-
-  // Logo upload logic
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
     if (file) {
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        toast.error('Please select an image file')
+        form.setError('logo', { message: 'Please upload an image file' })
         return
       }
-      
+
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        toast.error('Image size should be less than 5MB')
+        form.setError('logo', { message: 'Image must be less than 5MB' })
         return
       }
-      
-      setLogoFile(file)
-      const previewUrl = URL.createObjectURL(file)
-      setLogoPreview(previewUrl)
-      
-      // Clean up previous preview URL
-      return () => URL.revokeObjectURL(previewUrl)
+
+      // Create preview
+      const reader = new FileReader()
+      reader.onload = () => {
+        const result = reader.result as string
+        setLogoPreview(result)
+        form.setValue('logo', result)
+        form.clearErrors('logo')
+      }
+      reader.readAsDataURL(file)
     }
   }
 
-  const uploadLogo = async () => {
-    if (!logoFile) return ''
-    setUploadingLogo(true)
+  const removeLogo = () => {
+    setLogoPreview(null)
+    form.setValue('logo', '')
+  }
+
+  const onSubmit = async (data: ShopFormData) => {
     try {
-      const supabase = createClient()
-      const fileExt = logoFile.name.split('.').pop()
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`
-      const filePath = `shop-logos/${fileName}`
-      
-      // First, try to create the bucket if it doesn't exist
-      const { data: buckets } = await supabase.storage.listBuckets()
-      const logosBucket = buckets?.find(bucket => bucket.name === 'logos')
-      
-      if (!logosBucket) {
-        const { error: bucketError } = await supabase.storage.createBucket('logos', {
-          public: true,
-          allowedMimeTypes: ['image/*'],
-          fileSizeLimit: 5242880 // 5MB
+      if (isEditing && initialData.id) {
+        await updateShopMutation.mutateAsync({
+          id: initialData.id,
+          data,
         })
-        
-        if (bucketError) {
-          console.error('Error creating bucket:', bucketError)
-          toast.error('Failed to create storage bucket')
-          return ''
-        }
+      } else {
+        await createShopMutation.mutateAsync(data)
       }
       
-      const { data, error } = await supabase.storage.from('logos').upload(filePath, logoFile, {
-        cacheControl: '3600',
-        upsert: false
-      })
-      
-      if (error) {
-        console.error('Logo upload error:', error)
-        toast.error(`Logo upload failed: ${error.message}`)
-        return ''
-      }
-      
-      const { data: urlData } = supabase.storage.from('logos').getPublicUrl(filePath)
-      return urlData?.publicUrl || ''
+      // Reset form and close dialog
+      form.reset()
+      setLogoPreview(null)
+      setSelectedCity('')
+      onClose()
     } catch (error) {
-      console.error('Logo upload error:', error)
-      toast.error('Logo upload failed')
-      return ''
-    } finally {
-      setUploadingLogo(false)
+      // Error is handled by the mutation
+      console.error('Shop form submission error:', error)
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // Validation
-    if (!formData.name.trim()) {
-      toast.error('Shop name is required')
-      return
+  const handleClose = () => {
+    if (!isSubmitting) {
+      form.reset()
+      setLogoPreview(null)
+      setSelectedCity('')
+      onClose()
     }
-    
-    if (!formData.industry.trim()) {
-      toast.error('Please select or create a category')
-      return
-    }
-    
-    if (!formData.shop_number.trim()) {
-      toast.error('Shop number is required')
-      return
-    }
-    
-    if (!formData.city.trim()) {
-      toast.error('City is required')
-      return
-    }
-    
-    if (!formData.mall.trim()) {
-      toast.error('Mall is required')
-      return
-    }
-    
-    if (!formData.whatsapp_number.trim()) {
-      toast.error('WhatsApp number is required')
-      return
-    }
-
-    let logoUrl = formData.logo
-    if (logoFile) logoUrl = await uploadLogo()
-    await onSubmit({ ...formData, logo: logoUrl })
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>Register Your Shop</CardTitle>
-        <CardDescription>
-          Fill in the details below to register your shop on our platform
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Logo upload */}
-          <div className="flex flex-col items-center space-y-2">
-            <label htmlFor="logo-upload" className="cursor-pointer flex flex-col items-center justify-center w-32 h-32 border-2 border-dashed border-indigo-300 rounded-full bg-indigo-50 hover:bg-indigo-100">
-              {logoPreview ? (
-                <img src={logoPreview} alt="Logo preview" className="w-24 h-24 object-contain rounded-full" />
-              ) : (
-                <span className="text-indigo-400 text-4xl">+</span>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {isEditing ? 'Edit Shop' : 'Register Your Shop'}
+          </DialogTitle>
+          <DialogDescription>
+            {isEditing 
+              ? 'Update your shop information below.'
+              : 'Fill in the details below to register your shop on Teke Teke.'
+            }
+          </DialogDescription>
+        </DialogHeader>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Logo Upload */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Shop Logo (Optional)</label>
+              <div className="flex items-center space-x-4">
+                {logoPreview ? (
+                  <div className="relative">
+                    <div className="w-20 h-20 relative rounded-lg overflow-hidden border">
+                      <Image
+                        src={logoPreview}
+                        alt="Logo preview"
+                        fill
+                        sizes="80px"
+                        style={{ objectFit: 'cover' }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={removeLogo}
+                      className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                      disabled={isSubmitting}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+                    <Upload className="h-8 w-8 text-gray-400" />
+                  </div>
+                )}
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="flex-1"
+                  disabled={isSubmitting}
+                />
+              </div>
+              {form.formState.errors.logo && (
+                <p className="text-sm text-red-500">{form.formState.errors.logo.message}</p>
               )}
-              <span className="text-xs text-indigo-700 mt-1">Upload Logo</span>
-              <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
-            </label>
-            {uploadingLogo && <span className="text-xs text-gray-500">Uploading...</span>}
-          </div>
-
-          {/* Shop Name */}
-          <div className="space-y-2">
-            <Label htmlFor="shop_name">Shop Name *</Label>
-            <Input 
-              id="shop_name" 
-              type="text" 
-              value={formData.name} 
-              onChange={e => handleInputChange('name', e.target.value)} 
-              placeholder="Enter your shop name" 
-              required 
-            />
-          </div>
-
-          {/* Industry & Shop Number Row */}
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 space-y-2">
-              <Label htmlFor="industry">Industry *</Label>
-              <Select onValueChange={(value) => setFormData(prev => ({ ...prev, industry: value }))} value={formData.industry}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select industry" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.name}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
-            <div className="flex-1 space-y-2">
-              <Label htmlFor="shop_number">Shop Number *</Label>
-              <Input id="shop_number" type="text" value={formData.shop_number} onChange={e => handleInputChange('shop_number', e.target.value)} placeholder="e.g., A-12, B-45" required />
-            </div>
-          </div>
 
-          {/* City & Mall Row */}
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 space-y-2">
-              <Label htmlFor="city">City *</Label>
-              <Select onValueChange={(value) => setFormData(prev => ({ ...prev, city: value, mall: '' }))} value={formData.city}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select city" />
-                </SelectTrigger>
-                <SelectContent>
-                  {cities.map((city) => (
-                    <SelectItem key={city.id} value={city.id}>
-                      {city.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex-1 space-y-2">
-              <Label htmlFor="mall">Mall/Location *</Label>
-              <Select onValueChange={(value) => setFormData(prev => ({ ...prev, mall: value }))} value={formData.mall} disabled={!formData.city}>
-                <SelectTrigger>
-                  <SelectValue placeholder={formData.city ? 'Select a mall' : 'Select a city first'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {malls.map((mall) => (
-                    <SelectItem key={mall.id} value={mall.id}>
-                      {mall.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Shop Name</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        placeholder="Enter shop name"
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          {/* WhatsApp Number */}
-          <div className="space-y-2">
-            <Label htmlFor="whatsapp_number">WhatsApp Number *</Label>
-            <Input id="whatsapp_number" type="tel" value={formData.whatsapp_number} onChange={e => handleInputChange('whatsapp_number', e.target.value)} placeholder="+254712345678" required />
-            <p className="text-sm text-muted-foreground">Include country code (e.g., +254 for Kenya)</p>
-          </div>
+              <FormField
+                control={form.control}
+                name="industry"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Industry</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                      disabled={isSubmitting || industriesLoading}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select industry" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {industriesLoading ? (
+                          <SelectItem value="" disabled>Loading industries...</SelectItem>
+                        ) : (
+                          industriesData?.industries?.map((industry: any) => (
+                            <SelectItem key={industry.id} value={industry.name}>
+                              {industry.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-          <div className="flex gap-4 justify-end">
-            <Button type="button" variant="outline" onClick={() => window.history.back()}>Cancel</Button>
-            <Button type="submit" className="" disabled={isLoading || uploadingLogo}>
-              {isLoading || uploadingLogo ? 'Registering...' : 'Register Shop'}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="city"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>City</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                      disabled={isSubmitting || citiesLoading}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select city" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {citiesLoading ? (
+                          <SelectItem value="" disabled>Loading cities...</SelectItem>
+                        ) : (
+                          citiesData?.cities?.map((city: any) => (
+                            <SelectItem key={city.id} value={city.id}>
+                              {city.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="mall"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Mall</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                      disabled={isSubmitting || mallsLoading || !selectedCity}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue 
+                            placeholder={
+                              !selectedCity 
+                                ? "Select city first" 
+                                : mallsLoading 
+                                ? "Loading malls..." 
+                                : "Select mall"
+                            } 
+                          />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {mallsLoading ? (
+                          <SelectItem value="" disabled>Loading malls...</SelectItem>
+                        ) : mallsData?.malls?.length === 0 ? (
+                          <SelectItem value="" disabled>No malls found</SelectItem>
+                        ) : (
+                          mallsData?.malls?.map((mall: any) => (
+                            <SelectItem key={mall.id} value={mall.id}>
+                              {mall.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="shopNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Shop Number</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        placeholder="e.g., A-12, G-34"
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="whatsappNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>WhatsApp Number</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        placeholder="+254 799 374937"
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClose}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <div className="flex items-center">
+                    <LoadingStates.Button size="sm" />
+                    <span className="ml-2">
+                      {isEditing ? 'Updating...' : 'Registering...'}
+                    </span>
+                  </div>
+                ) : (
+                  isEditing ? 'Update Shop' : 'Register Shop'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   )
 }
