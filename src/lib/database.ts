@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/client';
 
-// Database types ehee
+// Database types ehee deddeed
 export interface DatabaseShop {
   id: string;
   owner_id: string;
