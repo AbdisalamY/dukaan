@@ -1,7 +1,7 @@
 // src/components/admin/RecentShopsTable.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle } from 'lucide-react';
@@ -13,63 +13,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { db, DatabaseShop } from '@/lib/database';
 
 // Types
 interface Shop {
-  id: number;
+  id: string;
   name: string;
   owner: string;
   location: string;
   industry: string;
-  status: 'Active' | 'Inactive' | 'New';
+  status: 'pending' | 'approved' | 'rejected' | 'active' | 'inactive';
   dateApplied: string;
 }
 
-// Mock data
-const mockShops: Shop[] = [
-  {
-    id: 1,
-    name: 'Fashion Hub',
-    owner: 'Jane Smith',
-    location: 'Central Mall, Nairobi',
-    industry: 'Apparel',
-    status: 'New',
-    dateApplied: 'May 15, 2025'
-  },
-  {
-    id: 2,
-    name: 'Tech World',
-    owner: 'John Doe',
-    location: 'Garden City Mall, Nairobi',
-    industry: 'Electronics',
-    status: 'New',
-    dateApplied: 'May 16, 2025'
-  },
-  {
-    id: 3,
-    name: 'Glamour Beauty',
-    owner: 'Rose Kamau',
-    location: 'Westgate Mall, Nairobi',
-    industry: 'Cosmetics',
-    status: 'New',
-    dateApplied: 'May 15, 2025'
-  },
-  {
-    id: 4,
-    name: 'Shoe Haven',
-    owner: 'David Kamau',
-    location: 'Junction Mall, Nairobi',
-    industry: 'Shoes',
-    status: 'New',
-    dateApplied: 'May 9, 2025'
-  }
-];
-
 export function RecentShopsTable() {
-  const [shops, setShops] = useState<Shop[]>(mockShops);
+  const [shops, setShops] = useState<Shop[]>([]);
+  const [loading, setLoading] = useState(true);
   const [actionDialog, setActionDialog] = useState<{
     open: boolean, 
-    shopId: number | null,
+    shopId: string | null,
     action: 'approve' | 'reject' | null,
     shopName: string
   }>({
@@ -79,24 +41,76 @@ export function RecentShopsTable() {
     shopName: ''
   });
 
-  // Handle approval/rejection
-  const handleAction = () => {
-    if (actionDialog.shopId && actionDialog.action) {
-      if (actionDialog.action === 'approve') {
-        // In a real app, this would call an API to approve the shop
-        setShops(shops.map(shop => 
-          shop.id === actionDialog.shopId ? { ...shop, status: 'Active' as const } : shop
-        ));
-      } else {
-        // In a real app, this would call an API to reject the shop
-        setShops(shops.filter(shop => shop.id !== actionDialog.shopId));
+  // Fetch pending shops from database
+  useEffect(() => {
+    const fetchPendingShops = async () => {
+      try {
+        setLoading(true);
+        const response = await db.getShops({
+          status: 'pending',
+          limit: 10
+        });
+
+        const transformedShops: Shop[] = response.shops?.map((shop: DatabaseShop) => ({
+          id: shop.id,
+          name: shop.name,
+          owner: shop.profiles?.full_name || shop.profiles?.email || 'Unknown',
+          location: `${shop.mall}, ${shop.city}`,
+          industry: shop.industry,
+          status: shop.status,
+          dateApplied: new Date(shop.created_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          })
+        })) || [];
+
+        setShops(transformedShops);
+      } catch (error) {
+        console.error('Error fetching pending shops:', error);
+      } finally {
+        setLoading(false);
       }
-      setActionDialog({ open: false, shopId: null, action: null, shopName: '' });
+    };
+
+    fetchPendingShops();
+  }, []);
+
+  // Handle approval/rejection
+  const handleAction = async () => {
+    if (actionDialog.shopId && actionDialog.action) {
+      try {
+        const newStatus = actionDialog.action === 'approve' ? 'approved' : 'rejected';
+        await db.updateShop(actionDialog.shopId, { status: newStatus });
+        
+        if (actionDialog.action === 'approve') {
+          setShops(shops.map(shop => 
+            shop.id === actionDialog.shopId ? { ...shop, status: 'approved' as const } : shop
+          ));
+        } else {
+          setShops(shops.filter(shop => shop.id !== actionDialog.shopId));
+        }
+        
+        setActionDialog({ open: false, shopId: null, action: null, shopName: '' });
+      } catch (error) {
+        console.error('Error updating shop status:', error);
+      }
     }
   };
 
-  // Filter to only show new shops
-  const newShops = shops.filter(shop => shop.status === 'New');
+  // Filter to only show pending shops
+  const pendingShops = shops.filter(shop => shop.status === 'pending');
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-2 text-sm text-gray-600">Loading pending shops...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -111,14 +125,14 @@ export function RecentShopsTable() {
             </tr>
           </thead>
           <tbody>
-            {newShops.length === 0 ? (
+            {pendingShops.length === 0 ? (
               <tr>
                 <td colSpan={4} className="py-4 text-center text-gray-500">
                   No new shops to approve.
                 </td>
               </tr>
             ) : (
-              newShops.map((shop) => (
+              pendingShops.map((shop) => (
                 <tr key={shop.id} className="border-b last:border-0 hover:bg-gray-50">
                   <td className="py-3 px-4">
                     <div className="font-medium">{shop.name}</div>
@@ -156,7 +170,6 @@ export function RecentShopsTable() {
                         <XCircle className="h-4 w-4 mr-1" />
                         Reject
                       </Button>
-                      {/* Eye icon removed as requested */}
                     </div>
                   </td>
                 </tr>

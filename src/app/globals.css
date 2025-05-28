@@ -118,5 +118,12 @@
   }
   body {
     @apply bg-background text-foreground;
+    
   }
+}
+
+[data-side='top'][data-slot='select-content'] {
+  top: unset !important;
+  bottom: auto !important;
+  transform: none !important;
 }

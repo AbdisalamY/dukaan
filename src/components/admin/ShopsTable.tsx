@@ -1,7 +1,7 @@
 // src/components/admin/ShopsTable.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,78 +22,48 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
+import { db, DatabaseShop } from '@/lib/database';
 
 // Types
 interface Shop {
-  id: number;
+  id: string;
   name: string;
   owner: string;
   location: string;
   industry: string;
-  status: 'Active' | 'Inactive';
+  status: 'pending' | 'approved' | 'rejected' | 'active' | 'inactive';
   joinDate: string;
+  owner_id: string;
+  shop_number: string;
+  city: string;
+  mall: string;
+  whatsapp_number: string;
+  logo?: string;
 }
-
-// Mock data
-const mockShops: Shop[] = [
-  {
-    id: 1,
-    name: 'Fashion Hub',
-    owner: 'Jane Smith',
-    location: 'Central Mall, Nairobi',
-    industry: 'Apparel',
-    status: 'Active',
-    joinDate: '2024-01-15'
-  },
-  {
-    id: 2,
-    name: 'Tech World',
-    owner: 'John Doe',
-    location: 'Garden City Mall, Nairobi',
-    industry: 'Electronics',
-    status: 'Active',
-    joinDate: '2024-02-20'
-  },
-  {
-    id: 3,
-    name: 'Beauty Palace',
-    owner: 'Mary Wanjiku',
-    location: 'Westgate Mall, Nairobi',
-    industry: 'Cosmetics',
-    status: 'Inactive',
-    joinDate: '2024-03-10'
-  },
-  {
-    id: 4,
-    name: 'Shoe Haven',
-    owner: 'David Kamau',
-    location: 'Junction Mall, Nairobi',
-    industry: 'Shoes',
-    status: 'Active',
-    joinDate: '2024-04-05'
-  },
-  {
-    id: 5,
-    name: 'Kitchen Plus',
-    owner: 'Sarah Ouma',
-    location: 'Sarit Centre, Nairobi',
-    industry: 'Home & Kitchen',
-    status: 'Inactive',
-    joinDate: '2024-02-10'
-  }
-];
 
 const industries = [
   { value: 'all', label: 'All Industries' },
-  { value: 'apparel', label: 'Apparel' },
-  { value: 'cosmetics', label: 'Cosmetics' },
-  { value: 'electronics', label: 'Electronics' },
-  { value: 'shoes', label: 'Shoes' },
-  { value: 'home & kitchen', label: 'Home & Kitchen' }
+  { value: 'Fashion', label: 'Fashion' },
+  { value: 'Electronics', label: 'Electronics' },
+  { value: 'Groceries', label: 'Groceries' },
+  { value: 'Toys', label: 'Toys' },
+  { value: 'Books', label: 'Books' },
+  { value: 'Beauty', label: 'Beauty' },
+  { value: 'Apparel', label: 'Apparel' },
+  { value: 'Shoes', label: 'Shoes' },
+  { value: 'Home & Kitchen', label: 'Home & Kitchen' },
+  { value: 'Jewelry', label: 'Jewelry' },
+  { value: 'Sport & Fitness', label: 'Sport & Fitness' },
+  { value: 'Health & Beauty', label: 'Health & Beauty' },
+  { value: 'Food & Beverage', label: 'Food & Beverage' },
+  { value: 'Home & Garden', label: 'Home & Garden' }
 ];
 
 const statuses = [
   { value: 'all', label: 'All Statuses' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'rejected', label: 'Rejected' },
   { value: 'active', label: 'Active' },
   { value: 'inactive', label: 'Inactive' }
 ];
@@ -103,29 +73,69 @@ export function ShopsTable() {
   const [searchTerm, setSearchTerm] = useState('');
   const [industryFilter, setIndustryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [shops, setShops] = useState<Shop[]>(mockShops);
-  const [deleteDialog, setDeleteDialog] = useState<{open: boolean, shopId: number | null, shopName: string}>({
+  const [shops, setShops] = useState<Shop[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [deleteDialog, setDeleteDialog] = useState<{open: boolean, shopId: string | null, shopName: string}>({
     open: false,
     shopId: null,
     shopName: ''
   });
-  const [reminderDialog, setReminderDialog] = useState<{open: boolean, shopId: number | null, shopName: string}>({
+  const [reminderDialog, setReminderDialog] = useState<{open: boolean, shopId: string | null, shopName: string}>({
     open: false,
     shopId: null,
     shopName: ''
   });
-  const [reminderHistoryDialog, setReminderHistoryDialog] = useState<{open: boolean, shopId: number | null, shopName: string}>({
+  const [reminderHistoryDialog, setReminderHistoryDialog] = useState<{open: boolean, shopId: string | null, shopName: string}>({
     open: false,
     shopId: null,
     shopName: ''
   });
-  const [detailsDialog, setDetailsDialog] = useState<{open: boolean, shopId: number | null, shopName: string}>({
+  const [detailsDialog, setDetailsDialog] = useState<{open: boolean, shopId: string | null, shopName: string}>({
     open: false,
     shopId: null,
     shopName: ''
   });
 
-  // Mock reminder history data
+  // Fetch shops from database
+  useEffect(() => {
+    const fetchShops = async () => {
+      try {
+        setLoading(true);
+        const response = await db.getShops({
+          search: searchTerm,
+          industry: industryFilter === 'all' ? undefined : industryFilter,
+          status: statusFilter === 'all' ? undefined : statusFilter,
+          limit: 100
+        });
+
+        const transformedShops: Shop[] = response.shops?.map((shop: DatabaseShop) => ({
+          id: shop.id,
+          name: shop.name,
+          owner: shop.profiles?.full_name || shop.profiles?.email || 'Unknown',
+          location: `${shop.mall}, ${shop.city}`,
+          industry: shop.industry,
+          status: shop.status,
+          joinDate: shop.created_at,
+          owner_id: shop.owner_id,
+          shop_number: shop.shop_number,
+          city: shop.city,
+          mall: shop.mall,
+          whatsapp_number: shop.whatsapp_number,
+          logo: shop.logo || undefined
+        })) || [];
+
+        setShops(transformedShops);
+      } catch (error) {
+        console.error('Error fetching shops:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchShops();
+  }, [searchTerm, industryFilter, statusFilter]);
+
+  // Mock reminder history data - in a real app, this would come from the database
   const mockReminderHistory = [
     { id: 1, date: 'May 15, 2025', time: '10:30 AM', status: 'Sent' },
     { id: 2, date: 'May 10, 2025', time: '02:15 PM', status: 'Sent' },
@@ -140,20 +150,24 @@ export function ShopsTable() {
       shop.location.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesIndustry = industryFilter === 'all' || 
-      shop.industry.toLowerCase() === industryFilter.toLowerCase();
+      shop.industry === industryFilter;
     
     const matchesStatus = statusFilter === 'all' || 
-      shop.status.toLowerCase() === statusFilter.toLowerCase();
+      shop.status === statusFilter;
     
     return matchesSearch && matchesIndustry && matchesStatus;
   });
 
   // Handlers
-  const handleDeleteShop = () => {
+  const handleDeleteShop = async () => {
     if (deleteDialog.shopId) {
-      // In a real app, this would call an API to delete the shop
-      setShops(shops.filter(shop => shop.id !== deleteDialog.shopId));
-      setDeleteDialog({ open: false, shopId: null, shopName: '' });
+      try {
+        await db.deleteShop(deleteDialog.shopId);
+        setShops(shops.filter(shop => shop.id !== deleteDialog.shopId));
+        setDeleteDialog({ open: false, shopId: null, shopName: '' });
+      } catch (error) {
+        console.error('Error deleting shop:', error);
+      }
     }
   };
 
@@ -165,17 +179,44 @@ export function ShopsTable() {
     }
   };
 
+  const handleStatusChange = async (shopId: string, newStatus: string) => {
+    try {
+      await db.updateShop(shopId, { status: newStatus });
+      setShops(shops.map(shop => 
+        shop.id === shopId ? { ...shop, status: newStatus as any } : shop
+      ));
+    } catch (error) {
+      console.error('Error updating shop status:', error);
+    }
+  };
+
   // Get status badge
   const getStatusBadge = (status: Shop['status']) => {
     switch(status) {
-      case 'Active':
+      case 'active':
+      case 'approved':
         return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>;
-      case 'Inactive':
+      case 'inactive':
         return <Badge className="bg-red-100 text-red-800 border-red-200">Inactive</Badge>;
+      case 'pending':
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Pending</Badge>;
+      case 'rejected':
+        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Rejected</Badge>;
       default:
         return <Badge variant="secondary">Unknown</Badge>;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading shops...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -262,7 +303,7 @@ export function ShopsTable() {
                         <Eye className="h-4 w-4" />
                       </Button>
                       
-                      {shop.status === 'Inactive' && (
+                      {shop.status === 'inactive' && (
                         <div className="flex space-x-2">
                           <Button 
                             size="sm" 
@@ -278,7 +319,6 @@ export function ShopsTable() {
                             <span>Remind</span>
                           </Button>
                           
-                          {/* Added Reminder History button next to Remind */}
                           <Button 
                             size="sm" 
                             variant="outline"
@@ -322,7 +362,18 @@ export function ShopsTable() {
                             View Shop Details
                           </DropdownMenuItem>
                           
-                          {shop.status === 'Inactive' && (
+                          {shop.status === 'pending' && (
+                            <>
+                              <DropdownMenuItem onClick={() => handleStatusChange(shop.id, 'approved')}>
+                                Approve Shop
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleStatusChange(shop.id, 'rejected')}>
+                                Reject Shop
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          
+                          {shop.status === 'inactive' && (
                             <>
                               <DropdownMenuItem onClick={() => setReminderDialog({ 
                                 open: true, 
@@ -332,7 +383,6 @@ export function ShopsTable() {
                                 Send Payment Reminder
                               </DropdownMenuItem>
                               
-                              {/* Added a clear separation in dropdown between Remind and Reminder History */}
                               <DropdownMenuItem onClick={() => setReminderHistoryDialog({
                                 open: true,
                                 shopId: shop.id,
@@ -492,7 +542,6 @@ export function ShopsTable() {
             <DialogTitle>Shop Details - {detailsDialog.shopName}</DialogTitle>
           </DialogHeader>
           
-          {/* Mock shop details - in a real app, you would fetch these from your API */}
           <div className="mt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -509,9 +558,15 @@ export function ShopsTable() {
                     </p>
                   </div>
                   <div>
+                    <p className="text-xs text-gray-500">Shop Number</p>
+                    <p className="text-sm font-medium">
+                      {shops.find(s => s.id === detailsDialog.shopId)?.shop_number || 'Unknown'}
+                    </p>
+                  </div>
+                  <div>
                     <p className="text-xs text-gray-500">Status</p>
                     <div className="mt-1">
-                      {getStatusBadge(shops.find(s => s.id === detailsDialog.shopId)?.status || 'Active')}
+                      {getStatusBadge(shops.find(s => s.id === detailsDialog.shopId)?.status || 'pending')}
                     </div>
                   </div>
                 </div>
@@ -530,6 +585,12 @@ export function ShopsTable() {
                     <p className="text-xs text-gray-500">Location</p>
                     <p className="text-sm font-medium">
                       {shops.find(s => s.id === detailsDialog.shopId)?.location || 'Unknown'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">WhatsApp</p>
+                    <p className="text-sm font-medium">
+                      {shops.find(s => s.id === detailsDialog.shopId)?.whatsapp_number || 'Unknown'}
                     </p>
                   </div>
                   <div>

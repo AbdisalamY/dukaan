@@ -1,3 +1,9 @@
+<<<<<<< HEAD
+=======
+// lib/utils.ts
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+>>>>>>> to-auth
 
 // src/lib/utils.ts
 import { ClassValue, clsx } from "clsx";
@@ -9,12 +15,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+<<<<<<< HEAD
 // Format currency
+=======
+// Additional utility functions for your project
+>>>>>>> to-auth
 export function formatCurrency(amount: number, currency: string = 'KES') {
   return new Intl.NumberFormat('en-KE', {
     style: 'currency',
     currency: currency,
     minimumFractionDigits: 0
+<<<<<<< HEAD
   }).format(amount);
 }
 
@@ -118,11 +129,41 @@ export function createSlug(text: string): string {
 }
 
 // Get initials from name
+=======
+  }).format(amount)
+}
+
+export function generateTransactionId() {
+  const prefix = 'TX'
+  const timestamp = Date.now().toString().slice(-6)
+  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
+  return `${prefix}${timestamp}${random}`
+}
+
+export function validateKenyanPhone(phone: string): boolean {
+  const regex = /^(?:\+254|254|0)([17]\d{8})$/
+  return regex.test(phone)
+}
+
+export function formatPhoneNumber(phone: string): string {
+  if (!validateKenyanPhone(phone)) {
+    throw new Error('Invalid Kenyan phone number')
+  }
+  
+  const match = phone.match(/^(?:\+254|254|0)([17]\d{8})$/)
+  if (!match) return phone
+  
+  const digits = match[1]
+  return `+254${digits}`
+}
+
+>>>>>>> to-auth
 export function getInitials(name: string): string {
   return name
     .split(' ')
     .map(n => n[0])
     .join('')
+<<<<<<< HEAD
     .toUpperCase();
 }
 
@@ -135,4 +176,7 @@ export function formatFileSize(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+=======
+    .toUpperCase()
+>>>>>>> to-auth
 }
